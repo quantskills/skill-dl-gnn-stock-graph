@@ -2,7 +2,7 @@
 
 Use this skill when you need GNN-based quantitative stock selection for the A-share market. Supports multi-layer heterogeneous graphs (Shenwan L1/L2/L3 industries + concept sectors + institutional holdings + DTW similarity + Pearson correlation), dual GNN architectures (GATs_ts + MF-IAMGCN), five-dimensional feature engineering (price-volume / fundamental / sentiment / macro / relational), TopK stock selection, and a complete A-share backtest engine (T+1 settlement, price limit simulation, commission + stamp tax + slippage).
 
-[![CI](https://github.com/panda-trading/skill-dl-gnn-stock-graph/actions/workflows/validate.yml/badge.svg)](https://github.com/panda-trading/skill-dl-gnn-stock-graph/actions/workflows/validate.yml)
+[![CI](https://github.com/quantskills/skill-dl-gnn-stock-graph/actions/workflows/validate.yml/badge.svg)](https://github.com/quantskills/skill-dl-gnn-stock-graph/actions/workflows/validate.yml)
 ![Version](https://img.shields.io/badge/version-0.1.0-2563eb)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)
 ![PyTorch](https://img.shields.io/badge/pytorch-2.0%2B-ee4c2c)
@@ -71,9 +71,6 @@ python3 -m pytest tests/ -v
 
 # 5. Single-day stock selection (~6-10s)
 python3 scripts/scan.py --date 20260731 --model gats_ts --train_days 120 --epochs 10 --top_k 10
-
-# 6. Quick end-to-end smoke test
-python3 scripts/_e2e_smoke.py --date 20260731 --epochs 5
 ```
 
 ## Core Design
