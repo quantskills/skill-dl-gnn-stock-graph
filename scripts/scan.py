@@ -64,9 +64,9 @@ def _load_model_kwargs(config_path: str, model_name: str) -> dict:
     return result
 
 
-def _resolve_scan_date(explicit: str | None) -> str:
-    if explicit:
-        return explicit
+def _resolve_scan_date(date_arg: str | None) -> str:
+    if date_arg:
+        return date_arg
     d = loader.get_last_trade_date()
     if not d:
         print("[error] get_last_trade_date returned nothing", file=sys.stderr)
@@ -235,6 +235,15 @@ def run_single_day(args: argparse.Namespace) -> int:
         if ckpt_path.exists():
             meta_ckpt = model_train.load_checkpoint(model, ckpt_path, device=device)
             print(f"[info] resumed from {ckpt_path} (val_loss={meta_ckpt['val_loss']:.4f})", file=sys.stderr)
+            # Construct a synthetic result for downstream metadata consumers
+            from types import SimpleNamespace
+            result = SimpleNamespace(
+                model=model,
+                n_epochs_ran=meta_ckpt.get("epochs_ran", 0),
+                final_train_loss=meta_ckpt.get("train_loss", float("nan")),
+                final_val_loss=meta_ckpt.get("val_loss", float("nan")),
+                device=str(device),
+            )
         else:
             print(f"[warn] --resume {args.resume} not found; training from scratch", file=sys.stderr)
 

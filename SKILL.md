@@ -1,8 +1,72 @@
 ---
 name: skill-dl-gnn-stock-graph
 description: 当需要对A股市场进行GNN量化选股时，使用此skill。支持多层异构图（行业/概念/DTW/相关性）构建、GATs_ts与MF-IAMGCN双模型架构、五维特征工程、TopK选股策略、完整回测引擎（含T+1/涨跌停/手续费模拟）。
+quantSkills:
+  organization: https://github.com/quantskills
+  repository: quantskills/skill-dl-gnn-stock-graph
+  repository_url: https://github.com/quantskills/skill-dl-gnn-stock-graph
+  project_type: skill
+  collection: liangshuyuan-q44
+  license: GPL-3.0
+  category: deep-learning
+  tags: [quant, gnn, deep-learning, stock-selection, a-stock, graph-attention, backtest, point-in-time, no-future-leak]
+  platforms: [claude-code, codex, cursor, hermes, openclaw]
+  language: zh-en
+  status: active
+  validation_level: runnable
+  maintainer_type: community
+  requires: ["pytorch>=2.0", "panda_data"]
+  summary_zh: 基于多层异构图神经网络（GATs_ts / MF-IAMGCN）的A股量化选股，支持五维特征工程、TopK策略和完整回测引擎。
+  summary_en: A-share quantitative stock selection using multi-layer heterogeneous GNNs (GATs_ts / MF-IAMGCN) with five-dimensional features, TopK strategy, and full backtest engine.
 tags: [quant, gnn, deep-learning, stock-selection, a-stock, graph-attention, backtest]
 ---
+
+```json qsh-form
+{
+  "version": 1,
+  "task": {
+    "placeholder": "例如：用 GATs_ts 从沪深300选30只股票",
+    "required": true
+  },
+  "fields": [
+    {
+      "key": "date",
+      "type": "date",
+      "label": "扫描日期"
+    },
+    {
+      "key": "model",
+      "type": "select",
+      "label": "模型",
+      "options": [
+        {"value": "gats_ts", "label": "GATs_ts (RNN + 动态图注意力)"},
+        {"value": "mf_iamgcn", "label": "MF-IAMGCN (混频跨期注意力)"}
+      ]
+    },
+    {
+      "key": "index",
+      "type": "select",
+      "label": "股票池",
+      "options": [
+        {"value": "000300.SH", "label": "沪深300"},
+        {"value": "000905.SH", "label": "中证500"},
+        {"value": "000852.SH", "label": "中证1000"}
+      ]
+    },
+    {
+      "key": "top_k",
+      "type": "number",
+      "label": "选股数量"
+    },
+    {
+      "key": "epochs",
+      "type": "number",
+      "label": "训练轮数（默认100）"
+    }
+  ],
+  "prompt_template": "{{task}}；扫描日：{{date}}；模型：{{model}}；股票池：{{index}}；选股数量：{{top_k}}。仅使用 date < {{date}} 的数据。附件：{{#attachments}}"
+}
+```
 
 # 深度图神经网络 · A股量化选股
 
@@ -11,6 +75,16 @@ tags: [quant, gnn, deep-learning, stock-selection, a-stock, graph-attention, bac
 - 想利用多层异构图捕捉行业联动、概念轮动、价格形态相似性等隐性市场结构
 - 想融合混频数据（日频量价 + 季频基本面 + 情绪文本）做统一建模
 - 想对选股策略做严格回测（含T+1、涨跌停、手续费、滑点的真实A股约束）
+
+## Core Workflow
+
+1. Resolve stock universe from index weights (CSI300 / CSI500 / CSI1000) at the scan date T.
+2. Filter out ST/*ST stocks, sub-new stocks (< 60 days listed), and suspended stocks.
+3. Pull 5-dimensional features using 17 PandaData APIs, strictly `date < T`.
+4. Build multi-layer heterogeneous graph with explicit (industry/concept/institutional) and implicit (DTW/Pearson) edges.
+5. Train GNN model (GATs_ts or MF-IAMGCN) on the training window; per-symbol train/val split.
+6. Predict scores for all universe stocks and select TopK.
+7. Optionally run backtest with T+1, price limits, and transaction costs.
 
 ## 数据接口（panda_data）
 
@@ -182,25 +256,6 @@ python scripts/scan.py --index 000852.SH   # 中证1000
 - **最大回撤硬止损**：-20%
 - **流动性过滤**：换手率 < 0.1% 的股票不纳入
 
-## 输出结果
-
-### `output/gnn_picks_YYYYMMDD.csv`
-
-| 列 | 说明 |
-|---|---|
-| `trade_date` | 选股日 T |
-| `rank` | 排名（1 = 最高分） |
-| `symbol` | 股票代码 |
-| `name` | 股票名 |
-| `score` | GNN 预测得分 |
-| `ret_T` | T 日收益率 |
-| `sector` | 申万一级行业 |
-| `market_cap` | 总市值 |
-
-### `output/gnn_picks_YYYYMMDD.md`
-
-Markdown 报告：TopK 榜单 + 行业分布 + 模型元信息 + 回测绩效（若启用回测模式）。
-
 ## 使用方式
 
 ```bash
@@ -245,6 +300,54 @@ python scripts/scan.py \
 pytest tests/ -v
 ```
 
+## Output Contract
+
+### `output/gnn_picks_YYYYMMDD.csv`
+
+Every selected stock is included with the required fields below. A stock is considered selected when its `rank <= top_k`.
+
+| 列 | 类型 | 约束 |
+|---|---|---|
+| `trade_date` | string (YYYYMMDD) | 扫描日期，非空 |
+| `rank` | integer | 连续 1..K，无缺漏，非空 |
+| `symbol` | string | A股代码含后缀 (.SH / .SZ)，每文件唯一，非空 |
+| `name` | string | 股票名称，非空 |
+| `score` | float | GNN 预测得分，有限、非 NaN，单调非递增 |
+| `ret_T` | float | T 日收益率（信息列，若 T 为当日可为 NaN） |
+| `sector` | string | 申万一级行业名，非空 |
+| `market_cap` | float | T 日总市值，非空 |
+
+### `output/gnn_picks_YYYYMMDD.md`
+
+Markdown 报告必须包含：
+1. **TopK 排名表**：含 symbol、name、score、sector、market_cap
+2. **行业分布**：各申万一级行业数量和占比
+3. **模型元信息**：模型名、seed、train_days、lookback、epochs、特征数、节点数、边数、图类型
+
+若启用回测模式，额外章节：绩效指标（年化收益/夏普/索提诺/卡玛/信息比率/最大回撤）和交易统计（换手率/胜率）。
+
+### Model Checkpoint (`output/{model}_{date}_model.pt`)
+
+PyTorch `state_dict`，包含 `model_state_dict`、`optimizer_state_dict`、`epoch`、`val_loss`、`seed`、`model_name`。Checkpoint 是大二进制文件，不应提交 Git。
+
+## Validation
+
+```bash
+pytest tests/ -v
+python scripts/validate.py output/gnn_picks_YYYYMMDD.csv
+node scripts/validate-qsh-form.mjs SKILL.md
+```
+
+CSV 校验器检查列存在性、rank 单调性、score 有限性、日期格式和 symbol 唯一性。MD 校验器检查必需章节。qsh-form 校验器确保输入契约合法。
+
+## Safety Boundary
+
+Credentials are read from environment variables (`PANDA_DATA_USERNAME`, `PANDA_DATA_PASSWORD`) and removed from the process environment after loading. Never place credentials, raw private data, model checkpoints, or generated full-market datasets in Git.
+
+`.gitignore` excludes `output/`, `models/`, `graph_cache/`, `*.log`, `*.parquet`.
+
+This Community Project is for research and education only. GNN predictions carry inherent uncertainty; selected stocks are not guaranteed to outperform. It is not an official or verified QUANTSKILLS product and does not constitute investment advice.
+
 ## A股特殊处理清单
 
 - [x] 后复权处理（`get_stock_daily_post`）
@@ -256,6 +359,13 @@ pytest tests/ -v
 - [x] T+1 交易规则合规
 - [x] 涨跌停买卖限制
 - [x] 真实交易成本（佣金+印花税+滑点）
+
+## References
+
+- `references/data_guide.md` — 28 特征到 API 到公式的完整字段口径
+- `references/methodology.md` — 方法冻结（v0.1.0），fail-closed 原则，无未来函数约束
+- `references/source_boundary.md` — 允许/禁止数据源，可复现性保证
+- `references/need_used_api.md` — 17 个 PandaData API 入参/响应详情
 
 ## 验收要求
 
