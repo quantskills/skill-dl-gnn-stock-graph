@@ -139,8 +139,6 @@ python3 scripts/_e2e_smoke.py --date 20260731 --epochs 5
 │   ├── test_features.py
 │   ├── test_model.py
 │   └── test_strategy_backtest.py
-├── production/
-│   └── SKILL.md                            ← 产出物读取契约
 └── references/
     ├── data_guide.md                       ← 特征到 API 到公式的完整字段口径
     ├── methodology.md                      ← 方法冻结（v0.1.0）
@@ -184,7 +182,6 @@ node scripts/validate-qsh-form.mjs SKILL.md
 - [方法冻结](references/methodology.md)
 - [数据源边界](references/source_boundary.md)
 - [API 接口文档](references/need_used_api.md)
-- [产出物读取契约](production/SKILL.md)
 - [版本记录](CHANGELOG.md)
 
 ## 支持的运行时平台

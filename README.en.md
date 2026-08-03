@@ -137,8 +137,6 @@ This snapshot verifies end-to-end execution and training reproducibility. It doe
 │   ├── test_features.py
 │   ├── test_model.py
 │   └── test_strategy_backtest.py
-├── production/
-│   └── SKILL.md                            ← Output reading contract
 └── references/
     ├── data_guide.md                       ← Feature-to-API-to-formula mapping
     ├── methodology.md                      ← Methodology freeze (v0.1.0)
@@ -182,7 +180,6 @@ node scripts/validate-qsh-form.mjs SKILL.md
 - [Methodology Freeze](references/methodology.md)
 - [Source Boundary](references/source_boundary.md)
 - [API Reference](references/need_used_api.md)
-- [Output Reading Contract](production/SKILL.md)
 - [Changelog](CHANGELOG.md)
 
 ## Supported Runtimes
