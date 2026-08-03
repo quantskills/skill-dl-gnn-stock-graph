@@ -4,7 +4,7 @@
 
 当需要对 A 股市场进行 GNN 量化选股时，使用此 skill。支持多层异构图（申万 L1/L2/L3 行业 + 概念板块 + 机构持仓 + DTW 形态相似 + Pearson 相关性）构建、GATs_ts 与 MF-IAMGCN 双模型架构、五维特征工程（量价/基本面/情绪/宏观/关系）、TopK 选股策略、完整 A 股回测引擎（含 T+1/涨跌停/佣金+印花税+滑点模拟）。
 
-[![CI](https://github.com/panda-trading/skill-dl-gnn-stock-graph/actions/workflows/validate.yml/badge.svg)](https://github.com/panda-trading/skill-dl-gnn-stock-graph/actions/workflows/validate.yml)
+[![CI](https://github.com/quantskills/skill-dl-gnn-stock-graph/actions/workflows/validate.yml/badge.svg)](https://github.com/quantskills/skill-dl-gnn-stock-graph/actions/workflows/validate.yml)
 ![Version](https://img.shields.io/badge/version-0.1.0-2563eb)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)
 ![PyTorch](https://img.shields.io/badge/pytorch-2.0%2B-ee4c2c)
@@ -73,9 +73,6 @@ python3 -m pytest tests/ -v
 
 # 5. 端到端选股（约 6-10 秒）
 python3 scripts/scan.py --date 20260731 --model gats_ts --train_days 120 --epochs 10 --top_k 10
-
-# 6. 端到端快速验证
-python3 scripts/_e2e_smoke.py --date 20260731 --epochs 5
 ```
 
 ## 核心设计要点
