@@ -4,42 +4,6 @@
 
 当需要对 A 股市场进行 GNN 量化选股时，使用此 skill。支持多层异构图（申万 L1/L2/L3 行业 + 概念板块 + 机构持仓 + DTW 形态相似 + Pearson 相关性）构建、GATs_ts 与 MF-IAMGCN 双模型架构、五维特征工程（量价/基本面/情绪/宏观/关系）、TopK 选股策略、完整 A 股回测引擎（含 T+1/涨跌停/佣金+印花税+滑点模拟）。
 
-[![CI](https://github.com/quantskills/skill-dl-gnn-stock-graph/actions/workflows/validate.yml/badge.svg)](https://github.com/quantskills/skill-dl-gnn-stock-graph/actions/workflows/validate.yml)
-![Version](https://img.shields.io/badge/version-0.1.0-2563eb)
-![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)
-![PyTorch](https://img.shields.io/badge/pytorch-2.0%2B-ee4c2c)
-![Data](https://img.shields.io/badge/data-PandaData-e11d48)
-![Tests](https://img.shields.io/badge/tests-52%20passed-15803d)
-[![License](https://img.shields.io/badge/license-GPL--3.0-334155)](LICENSE)
-
----
-
-## 项目定位
-
-这个 Skill 实现的是基于图神经网络的量化选股系统，不是简单的因子打分器。
-
-- **Point-in-time**：所有特征和标签严格使用 `date < T` 的数据，无未来函数。
-- **多层异构图**：显性边（申万 L1/L2/L3 行业 + 概念 + 机构持仓）+ 隐性边（DTW + Pearson 相关性）。
-- **双模型架构**：GATs_ts（RNN + 动态图注意力）和 MF-IAMGCN（混频跨期注意力）。
-- **可复现**：相同 `--seed` 产生相同 TopK 排序。
-- **A股合规**：T+1、涨跌停、真实交易成本、ST/次新股过滤。
-
-> 当前验证范围是沪深300。中证500/1000 接口已适配但未做端到端测试。
-
-## 工作流程
-
-```mermaid
-flowchart LR
-    A[Universe 股票池] --> B[数据加载 17 APIs]
-    B --> C[7项数据清洗]
-    C --> D[图构建 显性+隐性边]
-    D --> E[五维特征工程 298维]
-    E --> F[模型训练 GATs_ts/MF-IAMGCN]
-    F --> G[TopK 选股]
-    G --> H[CSV + MD 报告]
-    G --> I[回测引擎 T+1/涨跌停/成本]
-```
-
 ## ⚠️ 免责声明
 
 - **仅供研究与教育用途**：本 skill 仅为量化交易研究工具，不构成任何形式的投资建议、理财建议或交易推荐。
@@ -47,13 +11,60 @@ flowchart LR
 - **风险边界**：本工具不感知市场流动性、涨跌停、停牌、滑点、集合竞价等实际交易约束，生成的选股信号可能因市场条件变化而无法成交或造成亏损。GNN 模型预测存在固有不确定性，不应作为唯一决策依据。
 - **非官方背书**：本项目为 QuantSkills 社区项目，未经专业审计或监管机构认证。
 
-## 三态结果
+## 目录结构
 
-| 状态 | 含义 |
-|---|---|
-| `selected` | `rank <= top_k`：股票通过所有过滤器且进入 TopK。 |
-| `filtered_out` | 股票通过过滤器但未进入 TopK（预测得分低于阈值）。 |
-| `excluded` | 股票因 ST、次新股、停牌、流动性不足被排除。 |
+```
+├── SKILL.md                                ← 技能设计书
+├── README.md                               ← 本文件
+├── README.en.md                            ← English version
+├── LICENSE                                 ← GPL-3.0
+├── INSTALL.md                              ← 多平台安装指南
+├── requirements.txt                        ← 依赖声明
+├── skill.json                              ← Skill 元数据
+├── config/
+│   └── model_config.yaml                   ← 模型超参集中管理
+├── scripts/
+│   ├── scan.py                             ← 主入口 CLI（单日选股 + 多日回测）
+│   ├── report.py                           ← CSV + Markdown 报告输出
+│   ├── data/
+│   │   ├── loader.py                       ← panda_data 15 接口封装 + 字段自检
+│   │   ├── calendar.py                     ← A股交易日历工具
+│   │   └── cleaner.py                      ← 7 项 A 股数据清洗
+│   ├── graph/
+│   │   ├── explicit.py                     ← 行业/概念/股权显性关系
+│   │   ├── implicit.py                     ← DTW/相关性/格兰杰隐性关系
+│   │   └── builder.py                      ← 多层异构图构建 + 邻接矩阵
+│   ├── features/
+│   │   ├── price.py                        ← 14 维量价因子
+│   │   ├── fundamental.py                  ← 7 维基本面因子
+│   │   ├── sentiment.py                    ← 3 维情绪因子
+│   │   ├── relation.py                     ← 4 维图结构特征
+│   │   └── pipeline.py                     ← 特征管道（组装 → Winsorize → Z-score）
+│   ├── model/
+│   │   ├── layers.py                       ← GAT + GCN 纯 PyTorch 实现
+│   │   ├── gats_ts.py                      ← RNN + 动态图注意力网络
+│   │   ├── mf_iamgcn.py                    ← 混频跨期注意力多层图卷积
+│   │   └── train.py                        ← 训练循环 + EarlyStopping
+│   ├── strategy/
+│   │   ├── selector.py                     ← TopK 选股 + 阈值筛选
+│   │   └── ranker.py                       ← RankNet 排序损失
+│   ├── backtest/
+│   │   ├── engine.py                       ← 日频回测引擎
+│   │   ├── rules.py                        ← T+1 / 涨跌停 / 手续费 / 印花税
+│   │   └── metrics.py                      ← 夏普/索提诺/卡玛/信息比率
+│   └── risk/
+│       └── monitor.py                      ← 市场/流动性/系统性/集中度风控
+├── tests/
+│   ├── conftest.py
+│   ├── test_calendar.py                    ← 交易日历测试
+│   ├── test_cleaner.py                     ← 数据清洗测试
+│   ├── test_graph.py                       ← 图构建测试
+│   ├── test_features.py                    ← 特征工程测试
+│   ├── test_model.py                       ← 模型训练测试
+│   └── test_strategy_backtest.py           ← 策略/回测/风控测试
+└── references/
+    └── need_used_api.md                    ← panda_data 接口文档
+```
 
 ## 快速开始
 
@@ -73,6 +84,9 @@ python3 -m pytest tests/ -v
 
 # 5. 端到端选股（约 6-10 秒）
 python3 scripts/scan.py --date 20260731 --model gats_ts --train_days 120 --epochs 10 --top_k 10
+
+# 6. 端到端快速验证
+python3 scripts/_e2e_smoke.py --date 20260731 --epochs 5
 ```
 
 ## 核心设计要点
@@ -87,61 +101,15 @@ python3 scripts/scan.py --date 20260731 --model gats_ts --train_days 120 --epoch
 
 5. **完整回测引擎**：T+1 制度，涨跌停买卖限制，真实交易成本（佣金 0.03% + 印花税 0.1% 卖出 + 滑点 0.1%），等权分配，每日调仓。输出夏普/索提诺/卡玛/信息比率/最大回撤/年化换手率。
 
-## 已验证快照
+## 支持的运行时平台
 
-`2026-07-31`、模型与 schema `0.1.0`：
-
-| 指标 | 数量 |
-|---|---:|
-| 模型 | GATs_ts |
-| 股票池 | CSI300（300 只） |
-| TopK | 30 |
-| 训练时间 | ~6-10s |
-| 特征维度 | 298 维（20 日 × 14 量价 + 7 基本面 + 3 情绪 + 4 宏观 + 4 关系） |
-| 测试通过 | 52 项 |
-| 可复现 | ✅ 相同 seed → 相同 TopK |
-
-该快照用于验证端到端执行和训练可复现性，不代表历史收益或投资建议。
-
-## 目录结构
-
-```
-├── SKILL.md                                ← 技能设计书 + qsh-form
-├── README.md                               ← 本文件
-├── README.en.md                            ← English version
-├── LICENSE                                 ← GPL-3.0
-├── INSTALL.md                              ← 多平台安装指南
-├── requirements.txt                        ← 依赖声明
-├── requirements-dev.txt                    ← 开发/测试依赖
-├── skill.json                              ← Skill 元数据
-├── config/
-│   └── model_config.yaml                   ← 模型超参集中管理
-├── scripts/
-│   ├── scan.py                             ← 主入口 CLI（单日选股 + 多日回测）
-│   ├── validate.py                         ← CSV/MD 输出契约校验
-│   ├── validate-qsh-form.mjs               ← qsh-form JSON 格式校验
-│   ├── report.py                           ← CSV + Markdown 报告输出
-│   ├── data/                               ← 数据层（panda_data 封装 + 日历 + 清洗）
-│   ├── graph/                              ← 图层（显性/隐性边 + 构建器）
-│   ├── features/                           ← 特征工程（量价/基本面/情绪/关系 + 管道）
-│   ├── model/                              ← GNN 模型（GAT/GCN 层 + GATs_ts + MF-IAMGCN + 训练循环）
-│   ├── strategy/                           ← 策略层（TopK 选股 + RankNet）
-│   ├── backtest/                           ← 回测（引擎 + 交易规则 + 指标）
-│   └── risk/                               ← 风控（市场/流动性/系统性/集中度）
-├── tests/                                  ← 52 个单元测试
-│   ├── conftest.py
-│   ├── test_calendar.py
-│   ├── test_cleaner.py
-│   ├── test_graph.py
-│   ├── test_features.py
-│   ├── test_model.py
-│   └── test_strategy_backtest.py
-└── references/
-    ├── data_guide.md                       ← 特征到 API 到公式的完整字段口径
-    ├── methodology.md                      ← 方法冻结（v0.1.0）
-    ├── source_boundary.md                  ← 数据源边界
-    └── need_used_api.md                    ← panda_data 接口文档
-```
+| 平台 | 安装指南 |
+|---|---|
+| Claude Code | `INSTALL.md` § Claude Code |
+| Codex (OpenAI) | `INSTALL.md` § Codex |
+| Cursor | `INSTALL.md` § Cursor |
+| Hermes | `INSTALL.md` § Hermes |
+| OpenClaw | `INSTALL.md` § OpenClaw |
 
 ## 验收状态
 
@@ -153,44 +121,6 @@ python3 scripts/scan.py --date 20260731 --model gats_ts --train_days 120 --epoch
 - 回测 T+1/涨跌停/成本模拟 ✅
 - 无未来函数（训练集严格 `date < T`）✅
 
-## 输出与审计
-
-### 顶层 CSV
-
-- `trade_date`、`rank`、`symbol`、`name`、`score`、`ret_T`、`sector`、`market_cap`
-- `rank` 连续 1..K，无缺口
-- `score` 单调非递增
-
-### Markdown 报告
-
-- TopK 排名表 + 行业分布 + 模型元信息
-- 回测模式额外含绩效指标和交易统计
-
-### 校验
-
-```bash
-python scripts/validate.py output/gnn_picks_YYYYMMDD.csv
-node scripts/validate-qsh-form.mjs SKILL.md
-```
-
-## 方法与边界
-
-- [特征与字段口径](references/data_guide.md)
-- [方法冻结](references/methodology.md)
-- [数据源边界](references/source_boundary.md)
-- [API 接口文档](references/need_used_api.md)
-- [版本记录](CHANGELOG.md)
-
-## 支持的运行时平台
-
-| 平台 | 安装指南 |
-|---|---|
-| Claude Code | `INSTALL.md` § Claude Code |
-| Codex (OpenAI) | `INSTALL.md` § Codex |
-| Cursor | `INSTALL.md` § Cursor |
-| Hermes | `INSTALL.md` § Hermes |
-| OpenClaw | `INSTALL.md` § OpenClaw |
-
 ## 局限与后续优化方向
 
 | 局限 | 说明 | 后续 |
@@ -200,7 +130,7 @@ node scripts/validate-qsh-form.mjs SKILL.md
 | 供应链关系无数据源 | 显性供应链边默认关闭 | 接入外部数据库 |
 | 格兰杰因果计算量大 | O(N²·T)，默认关闭 | 引入 GPU 批量检验 |
 | 仅日频调仓 | 不支持日内 | v0.2 增加分钟级 |
-| 概念板块接口有套餐限额 | 全量概念拉取部分套餐报 600003 | 按需按股票拉取 |
+| 概念板块接口有套餐限额 | 全量概念拉取部分套餐报 600003 | 按指数权重采样 top 30 逐只拉取，失败则降级 |
 | MF-IAMGCN 仅端到端验证 | 未做完整超参搜索和消融实验 | v0.2 补充 |
 
 ## 依赖

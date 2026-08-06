@@ -64,9 +64,9 @@ def _load_model_kwargs(config_path: str, model_name: str) -> dict:
     return result
 
 
-def _resolve_scan_date(date_arg: str | None) -> str:
-    if date_arg:
-        return date_arg
+def _resolve_scan_date(explicit: str | None) -> str:
+    if explicit:
+        return explicit
     d = loader.get_last_trade_date()
     if not d:
         print("[error] get_last_trade_date returned nothing", file=sys.stderr)
@@ -179,8 +179,22 @@ def run_single_day(args: argparse.Namespace) -> int:
 
     # ---- 2. Graph ----
     industry_df = loader.load_industry_constituents()
-    # Per-stock concept pull to stay within plan limits; sample top 50 by index weight
-    concept_sample = sorted(universe)[:50]
+    # Per-stock concept pull to stay within plan limits; sample top 30 by index weight
+    concept_sample: list[str] = []
+    if not weights_df.empty and "stock_symbol" in weights_df.columns:
+        w_col = next((c for c in weights_df.columns if c in ("weight", "weights")), None)
+        if w_col is not None:
+            latest_date = weights_df["date"].max()
+            w_latest = weights_df[weights_df["date"] == latest_date].copy()
+            w_latest[w_col] = pd.to_numeric(w_latest[w_col], errors="coerce")
+            w_latest = w_latest.dropna(subset=[w_col])
+            w_latest = w_latest[w_latest["stock_symbol"].astype(str).isin(set(universe))]
+            concept_sample = (
+                w_latest.sort_values(w_col, ascending=False)["stock_symbol"]
+                .astype(str).head(30).tolist()
+            )
+    if not concept_sample:
+        concept_sample = sorted(universe)[:30]
     concept_df = loader.load_concept_constituents(symbols=concept_sample)
     holders_df = loader.load_top_holders(universe, start_date=fetch_start, end_date=scan_date)
 
@@ -213,6 +227,14 @@ def run_single_day(args: argparse.Namespace) -> int:
     )
     print(f"[info] samples — train: {fbundle.train_x.shape[0]}, score: {fbundle.score_x.shape[0]}", file=sys.stderr)
     if fbundle.score_x.shape[0] == 0:
+        # Auto-fallback: data not yet available for this date (e.g. today's data
+        # hasn't landed), or date is a non-trading day. Step back 1 trading day.
+        if args.date is None:
+            prev = loader.get_prev_trade_date(scan_date, n=1)
+            if prev:
+                print(f"[warn] no eligible stocks on {scan_date}, retrying with {prev}", file=sys.stderr)
+                args.date = prev
+                return run_single_day(args)
         print("[error] no eligible stocks", file=sys.stderr); return 3
 
     tr_node_x  = _aggregate_to_nodes(fbundle.train_x, fbundle.train_symbols, mapper, method="mean")
@@ -235,15 +257,6 @@ def run_single_day(args: argparse.Namespace) -> int:
         if ckpt_path.exists():
             meta_ckpt = model_train.load_checkpoint(model, ckpt_path, device=device)
             print(f"[info] resumed from {ckpt_path} (val_loss={meta_ckpt['val_loss']:.4f})", file=sys.stderr)
-            # Construct a synthetic result for downstream metadata consumers
-            from types import SimpleNamespace
-            result = SimpleNamespace(
-                model=model,
-                n_epochs_ran=meta_ckpt.get("epochs_ran", 0),
-                final_train_loss=meta_ckpt.get("train_loss", float("nan")),
-                final_val_loss=meta_ckpt.get("val_loss", float("nan")),
-                device=str(device),
-            )
         else:
             print(f"[warn] --resume {args.resume} not found; training from scratch", file=sys.stderr)
 
@@ -339,6 +352,9 @@ def _run_backtest(args: argparse.Namespace) -> int:
     performance metrics."""
     print(f"[info] backtest mode: {args.start} → {args.end}", file=sys.stderr)
 
+    # Auth before calendar lookup
+    loader.init_panda_data()
+
     all_dates = cal_mod.trading_days_between(args.start, args.end)
     if not all_dates:
         print("[error] no trading days in range", file=sys.stderr)
@@ -350,6 +366,14 @@ def _run_backtest(args: argparse.Namespace) -> int:
         print(f"[backtest] {date} ({i+1}/{total})", file=sys.stderr)
         args.date = date
         ret = run_single_day(args)
+        if ret == 3:
+            # No eligible stocks — likely data not yet available. Retry with
+            # previous trading day; only if we have one and it hasn't been used.
+            prev = loader.get_prev_trade_date(date, n=1)
+            if prev and prev not in picks_by_date:
+                print(f"[warn] no eligible stocks on {date}, retrying with {prev}", file=sys.stderr)
+                args.date = prev
+                ret = run_single_day(args)
         if ret != 0:
             print(f"[warn] skip {date} (error {ret})", file=sys.stderr)
             continue

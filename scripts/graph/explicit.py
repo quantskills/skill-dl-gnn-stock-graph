@@ -91,7 +91,7 @@ def build_concept_edges(
         List of (src, dst, 'concept', weight) tuples. Weight is 1 / sqrt(N_concept).
     """
     df = concept_df.copy()
-    sym_col = next((c for c in df.columns if c in ("stock_symbol", "symbol")), None)
+    sym_col = next((c for c in df.columns if c in ("stock_symbol", "symbol", "concept_stock")), None)
     # panda_data concept API returns concept_code or concept_name; normalize any code-like column
     con_col = next((c for c in df.columns if c in ("concept_code", "concept", "concept_name")), None)
     if sym_col is None or con_col is None:

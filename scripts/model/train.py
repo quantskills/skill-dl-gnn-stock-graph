@@ -51,6 +51,7 @@ def _pick_device() -> torch.device:
 def set_seed(seed: int) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
+    torch.set_num_threads(1)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
@@ -204,6 +205,14 @@ def train_model(
     """
     set_seed(seed)
     device = device or _pick_device()
+
+    if targets is None:
+        import warnings
+        warnings.warn(
+            "targets is None — GNN will train against zeros, producing meaningless predictions. "
+            "Ensure _build_targets() is called before train_model().",
+            RuntimeWarning,
+        )
 
     # Split — returns sample-level splits + node-level adjacency indices
     n_syms = node_symbols if node_symbols is not None else train_symbols

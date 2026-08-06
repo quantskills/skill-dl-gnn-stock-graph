@@ -42,6 +42,8 @@ from typing import Any
 
 import pandas as pd
 
+from scripts.data import cache
+
 # ---------------------------------------------------------------------------
 # Expected columns per data source (superset check)
 # ---------------------------------------------------------------------------
@@ -59,7 +61,7 @@ EXPECTED_COLUMNS: dict[str, set[str]] = {
     "index_daily": {"symbol", "date", "close", "pre_close"},
     "share_float": {"symbol", "date", "total", "total_a"},
     "industry_constituents": {"stock_symbol"},
-    "concept_constituents": {"stock_symbol"},
+    "concept_constituents": {"concept_stock"},
     "stock_industry": {"symbol", "industry_code"},
     "fina_reports": {"date", "symbol", "report_type"},
     "lhb_list": {"date", "symbol"},
@@ -158,11 +160,17 @@ def get_prev_trade_date(date: str, n: int = 1, exchange: str = "SH") -> str | No
 
 def load_trade_cal(start_date: str, end_date: str, exchange: str = "SH") -> pd.DataFrame:
     """Load A-share trading calendar. Returns columns [date, is_trading_day]."""
+    name = "trade_cal"
+    hit = cache.read_cache(name, start_date, end_date, date_col="nature_date", max_age_hours=0)
+    if hit is not None:
+        return hit
+
     import panda_data
     df = panda_data.get_trade_cal(start_date=start_date, end_date=end_date, exchange=exchange)
     df = _safe_date_col(df)
     if df.empty:
         return pd.DataFrame(columns=["date", "is_trading_day"])
+    cache.write_cache(name, df, date_col="nature_date")
     return df
 
 
@@ -171,6 +179,13 @@ def load_trade_cal(start_date: str, end_date: str, exchange: str = "SH") -> pd.D
 # ---------------------------------------------------------------------------
 def load_index_weights(index_symbol: str, date: str) -> pd.DataFrame:
     """Index constituents on a single day. Returns [index_symbol, date, stock_symbol]."""
+    name = "index_weights"
+    hit = cache.read_cache(name, None, None, date_col="date", max_age_hours=24)
+    if hit is not None:
+        hit = hit[hit["date"] == str(date)]
+        if not hit.empty:
+            return hit
+
     import panda_data
     df = panda_data.get_index_weights(
         index_symbol=index_symbol,
@@ -181,6 +196,7 @@ def load_index_weights(index_symbol: str, date: str) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["index_weights"]))
     _assert_columns(df, "index_weights")
+    cache.write_cache(name, df, date_col="date", dedup_cols=["index_symbol", "date", "stock_symbol"])
     return df
 
 
@@ -196,6 +212,11 @@ def load_factor(
 
     Returns OHLCV + turnover + market_cap.
     """
+    name = "factor"
+    hit = cache.read_cache(name, start_date, end_date, date_col="date", max_age_hours=24)
+    if hit is not None:
+        return hit
+
     import panda_data
     df = panda_data.get_factor(
         start_date=start_date,
@@ -208,6 +229,7 @@ def load_factor(
     if df.empty:
         return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["factor"]))
     _assert_columns(df, "factor")
+    cache.write_cache(name, df, date_col="date", dedup_cols=["date", "symbol"])
     return df
 
 
@@ -220,6 +242,11 @@ def load_stock_post(
 
     Returns columns: date, symbol, name, pre_close, limit_up, limit_down, trade_status.
     """
+    name = "stock_post"
+    hit = cache.read_cache(name, start_date, end_date, date_col="date", max_age_hours=24)
+    if hit is not None:
+        return hit
+
     import panda_data
     df = panda_data.get_stock_daily_post(
         start_date=start_date,
@@ -231,11 +258,20 @@ def load_stock_post(
     if df.empty:
         return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["stock_post"]))
     _assert_columns(df, "stock_post")
+    cache.write_cache(name, df, date_col="date", dedup_cols=["date", "symbol"])
     return df
 
 
 def load_index_daily(index_symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
     """Benchmark daily OHLCV for index_symbol over [start_date, end_date]."""
+    name = "index_daily"
+    hit = cache.read_cache(name, start_date, end_date, date_col="date", max_age_hours=24)
+    if hit is not None:
+        # Filter to requested symbol
+        hit = hit[hit["symbol"] == str(index_symbol)]
+        if not hit.empty:
+            return hit
+
     import panda_data
     df = panda_data.get_index_daily(
         symbol=index_symbol,
@@ -246,18 +282,26 @@ def load_index_daily(index_symbol: str, start_date: str, end_date: str) -> pd.Da
     if df.empty:
         return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["index_daily"]))
     _assert_columns(df, "index_daily")
+    cache.write_cache(name, df, date_col="date", dedup_cols=["date", "symbol"])
     return df
 
 
 def load_share_float(start_date: str = "", end_date: str = "") -> pd.DataFrame:
     """Load share float data. start_date/end_date are required by the API."""
-    import panda_data
     if not start_date or not end_date:
         return pd.DataFrame(columns=["symbol", "date", "total", "total_a"])
+
+    name = "share_float"
+    hit = cache.read_cache(name, start_date, end_date, date_col="date", max_age_hours=24)
+    if hit is not None:
+        return hit
+
+    import panda_data
     df = panda_data.get_share_float(start_date=start_date, end_date=end_date)
     df = _safe_date_col(df)
     if df.empty:
         return pd.DataFrame(columns=["symbol", "date", "total", "total_a"])
+    cache.write_cache(name, df, date_col="date", dedup_cols=["date", "symbol"])
     return df
 
 
@@ -266,11 +310,17 @@ def load_share_float(start_date: str = "", end_date: str = "") -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 def load_industry_constituents() -> pd.DataFrame:
     """Shenwan industry constituents. Returns [industry_code, stock_symbol]."""
+    name = "industry_constituents"
+    hit = cache.read_cache(name, None, None, date_col=None, max_age_hours=168)  # 7 days
+    if hit is not None:
+        return hit
+
     import panda_data
     df = panda_data.get_industry_constituents()
     df = _safe_date_col(df)
     if df.empty:
         return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["industry_constituents"]))
+    cache.write_cache(name, df, date_col=None)
     return df
 
 
@@ -281,12 +331,24 @@ def load_concept_constituents(symbols: list[str] | None = None) -> pd.DataFrame:
         symbols: if provided, pull concepts for these stocks only (per-symbol calls).
                  If None, attempts full pull (may hit plan limit on large universes).
     """
+    name = "concept_constituents"
+    if symbols:
+        # Check cache first — filter to requested symbols
+        hit = cache.read_cache(name, None, None, date_col=None, max_age_hours=168)
+        if hit is not None:
+            sym_col = next((c for c in hit.columns if c in ("concept_stock", "stock_symbol", "symbol")), None)
+            if sym_col:
+                desired = set(str(s) for s in symbols)
+                filtered = hit[hit[sym_col].astype(str).isin(desired)]
+                if not filtered.empty:
+                    return filtered.reset_index(drop=True)
+
     import panda_data
     if symbols:
         frames = []
         for sym in symbols:
             try:
-                df = panda_data.get_concept_constituents(stock_symbol=sym)
+                df = panda_data.get_concept_constituents(concept_stock=sym)
                 df = _safe_date_col(df)
                 if df is not None and not (hasattr(df, "empty") and df.empty):
                     frames.append(df)
@@ -294,6 +356,7 @@ def load_concept_constituents(symbols: list[str] | None = None) -> pd.DataFrame:
                 pass
         if frames:
             result = pd.concat(frames, ignore_index=True)
+            cache.write_cache(name, result, date_col=None)
             return result
         return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["concept_constituents"]))
     else:
@@ -303,6 +366,7 @@ def load_concept_constituents(symbols: list[str] | None = None) -> pd.DataFrame:
             df = _safe_date_col(df)
             if df is None or (hasattr(df, "empty") and df.empty):
                 return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["concept_constituents"]))
+            cache.write_cache(name, df, date_col=None)
             return df
         except Exception:
             return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["concept_constituents"]))
@@ -339,6 +403,16 @@ def load_fina_reports(
     panda_data get_fina_reports uses 'date' and 'is_latest' params (not start/end_date).
     We pull latest available data for each symbol.
     """
+    name = "fina_reports"
+    hit = cache.read_cache(name, start_date, end_date, date_col="date", max_age_hours=24)
+    if hit is not None:
+        desired = set(str(s) for s in symbols)
+        sym_col = next((c for c in hit.columns if c in ("symbol", "stock_symbol")), None)
+        if sym_col:
+            hit = hit[hit[sym_col].astype(str).isin(desired)]
+        if not hit.empty:
+            return hit.reset_index(drop=True)
+
     import panda_data
     # Try with the 'date' parameter — pull all reports up to end_date
     try:
@@ -350,6 +424,7 @@ def load_fina_reports(
         df = _safe_date_col(df)
         if df is None or (hasattr(df, "empty") and df.empty):
             return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["fina_reports"]))
+        cache.write_cache(name, df, date_col="date", dedup_cols=["date", "symbol", "report_type"])
         return df
     except Exception:
         return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["fina_reports"]))
@@ -360,21 +435,33 @@ def load_fina_reports(
 # ---------------------------------------------------------------------------
 def load_lhb_list(start_date: str, end_date: str) -> pd.DataFrame:
     """Dragon-tiger board list over [start_date, end_date]."""
+    name = "lhb_list"
+    hit = cache.read_cache(name, start_date, end_date, date_col="date", max_age_hours=24)
+    if hit is not None:
+        return hit
+
     import panda_data
     df = panda_data.get_lhb_list(start_date=start_date, end_date=end_date)
     df = _safe_date_col(df)
     if df.empty:
         return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["lhb_list"]))
+    cache.write_cache(name, df, date_col="date", dedup_cols=["date", "symbol"])
     return df
 
 
 def load_block_trade(start_date: str, end_date: str) -> pd.DataFrame:
     """Block trade data over [start_date, end_date]."""
+    name = "block_trade"
+    hit = cache.read_cache(name, start_date, end_date, date_col="date", max_age_hours=24)
+    if hit is not None:
+        return hit
+
     import panda_data
     df = panda_data.get_block_trade(start_date=start_date, end_date=end_date)
     df = _safe_date_col(df)
     if df.empty:
         return pd.DataFrame(columns=sorted(EXPECTED_COLUMNS["block_trade"]))
+    cache.write_cache(name, df, date_col="date", dedup_cols=["date", "symbol"])
     return df
 
 
@@ -398,11 +485,18 @@ def load_top_holders(symbols: list[str], start_date: str = "", end_date: str = "
 # ---------------------------------------------------------------------------
 def load_stock_status_change(start_date: str = "", end_date: str = "") -> pd.DataFrame:
     """ST/*ST and other special-treatment status. start_date/end_date required."""
-    import panda_data
     if not start_date or not end_date:
         return pd.DataFrame(columns=["symbol", "date", "status"])
+
+    name = "stock_status_change"
+    hit = cache.read_cache(name, start_date, end_date, date_col="date", max_age_hours=24)
+    if hit is not None:
+        return hit
+
+    import panda_data
     df = panda_data.get_stock_status_change(start_date=start_date, end_date=end_date)
     df = _safe_date_col(df)
+    cache.write_cache(name, df, date_col="date", dedup_cols=["date", "symbol"])
     return df
 
 

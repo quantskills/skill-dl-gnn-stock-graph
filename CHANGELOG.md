@@ -89,3 +89,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Daily rebalance only; no intraday execution
 - MF-IAMGCN end-to-end verified but not fully hyperparameter-tuned
 - No model checkpoint persistence (retrained from scratch each run)
+
+### Changed (post v0.1.0)
+
+- **Concept sampling**: now samples top 30 stocks by index weight (was alphabetical top 50); falls back to alphabetical if weights unavailable. Graceful degradation on per-stock pull failure.
+- **Training reproducibility**: `torch.set_num_threads(1)` added to `train.set_seed()` to eliminate CPU multi-threading non-determinism. Same seed now produces identical TopK results.
+- **Silent degradation guard**: `train_model()` now emits `RuntimeWarning` when `targets=None`, preventing silent zero-degradation.

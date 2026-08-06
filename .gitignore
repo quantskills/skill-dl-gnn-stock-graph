@@ -26,3 +26,6 @@ models/
 
 # Graph cache
 graph_cache/
+
+# Data cache
+scripts/data/cache/
