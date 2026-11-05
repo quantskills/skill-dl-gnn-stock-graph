@@ -275,3 +275,7 @@ pytest tests/ -v
 - 概念板块逐股票拉取配额受限，按指数权重采样 top 30 覆盖；概念边数据可能部分缺失
 - 图规模限制：单次不超过 500 节点（沪深300 + 中证500 合计约800只，需分片训练）
 - v0.2 计划：Learning-to-Rank 排序损失、贝叶斯 GNN 不确定性估计、LLM 情感集成
+
+## Pandadata compatibility
+
+[Pandadata 1.0.6 compatibility](references/pandadata-compatibility.md) — exact SDK baseline, validation scope, and shared guidance for all supported agent runtimes.

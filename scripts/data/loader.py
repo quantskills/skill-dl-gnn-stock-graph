@@ -380,8 +380,8 @@ def load_stock_industry(symbols: list[str] | None = None) -> pd.DataFrame:
     import panda_data
     symbol_arg = symbols if symbols else []
     if not symbol_arg:
-        # No-arg call for full list
-        df = panda_data.get_stock_industry(level="L1")
+        # Full mapping is provided by the constituents interface.
+        df = panda_data.get_industry_constituents(level="L1")
     else:
         df = panda_data.get_stock_industry(stock_symbol=symbol_arg, level="L1")
     df = _safe_date_col(df)
@@ -400,7 +400,7 @@ def load_fina_reports(
 ) -> pd.DataFrame:
     """Financial reports for given symbols.
 
-    panda_data get_fina_reports uses 'date' and 'is_latest' params (not start/end_date).
+    panda_data get_fina_reports requires start/end_quarter; date bounds the as-of publication snapshot.
     We pull latest available data for each symbol.
     """
     name = "fina_reports"
@@ -417,6 +417,8 @@ def load_fina_reports(
     # Try with the 'date' parameter — pull all reports up to end_date
     try:
         df = panda_data.get_fina_reports(
+            start_quarter=f"{start_date[:4]}q{(int(start_date[4:6]) - 1) // 3 + 1}",
+            end_quarter=f"{end_date[:4]}q{(int(end_date[4:6]) - 1) // 3 + 1}",
             symbol=symbols,
             date=end_date,
             is_latest=False,
