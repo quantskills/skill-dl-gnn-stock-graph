@@ -144,3 +144,6 @@ python3 scripts/_e2e_smoke.py --date 20260731 --epochs 5
 ## License
 
 GPL-3.0 — 详见 [LICENSE](LICENSE)
+
+
+Pandadata 兼容维护：[abgyjaguo](https://github.com/abgyjaguo)，保留原项目作者署名。

@@ -1,0 +1,329 @@
+{
+  "sdk_version": "1.0.6",
+  "contract_repository": "quantskills/skill-pandadata-api",
+  "contract_commit": "3f573a4140e4d1d02c556d981fac347168c943bb",
+  "required_methods": [
+    "get_block_trade",
+    "get_concept_constituents",
+    "get_factor",
+    "get_fina_reports",
+    "get_index_daily",
+    "get_index_weights",
+    "get_industry_constituents",
+    "get_last_trade_date",
+    "get_lhb_list",
+    "get_macro_ci",
+    "get_macro_mb",
+    "get_macro_na",
+    "get_macro_pi",
+    "get_prev_trade_date",
+    "get_share_float",
+    "get_stock_daily_post",
+    "get_stock_industry",
+    "get_stock_status_change",
+    "get_top_holders",
+    "get_trade_cal",
+    "init_token"
+  ],
+  "validation": {
+    "offline_contract": "passed",
+    "live_service": "not_tested"
+  },
+  "runtime_entrypoint": "SKILL.md",
+  "method_contracts": {
+    "get_block_trade": {
+      "signature": "(symbol: 'Optional[Union[str, List[str]]]' = None, start_date: 'Optional[str]' = None, end_date: 'Optional[str]' = None, fields: 'Optional[Union[str, List[str]]]' = None, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    },
+    "get_concept_constituents": {
+      "signature": "(concept: 'Optional[Union[str, List[str]]]' = None, concept_stock: 'Optional[Union[str, List[str]]]' = None, start_date: 'Optional[str]' = None, end_date: 'Optional[str]' = None, fields: 'Optional[Union[str, List[str]]]' = None, date: 'Optional[str]' = None, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "concept",
+        "concept_stock",
+        "start_date",
+        "end_date",
+        "fields",
+        "date"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    },
+    "get_factor": {
+      "signature": "(symbol: 'Union[str, List[str]]' = '', start_date: 'str' = '', end_date: 'str' = '', type: 'Optional[str]' = 'stock', factors: 'Union[str, List[str]]' = None, index_component: 'Optional[str]' = '', **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "type",
+        "factors",
+        "index_component"
+      ],
+      "required": [],
+      "runtime_required": [
+        "end_date",
+        "factors",
+        "start_date"
+      ],
+      "upstream_warning": false
+    },
+    "get_fina_reports": {
+      "signature": "(start_quarter: 'str' = '', end_quarter: 'str' = '', symbol: 'Optional[Union[str, List[str]]]' = None, fields: 'Optional[Union[str, List[str]]]' = None, date: 'Optional[str]' = None, is_latest: 'Optional[bool]' = True, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "start_quarter",
+        "end_quarter",
+        "symbol",
+        "fields",
+        "date",
+        "is_latest"
+      ],
+      "required": [],
+      "runtime_required": [
+        "end_quarter",
+        "start_quarter"
+      ],
+      "upstream_warning": false
+    },
+    "get_index_daily": {
+      "signature": "(symbol: 'Optional[Union[str, List[str]]]' = '', start_date: 'str' = '', end_date: 'str' = '', fields: 'Optional[Union[str, List[str]]]' = None, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [
+        "end_date",
+        "start_date"
+      ],
+      "upstream_warning": false
+    },
+    "get_index_weights": {
+      "signature": "(index_symbol: 'Optional[Union[str, List[str]]]' = None, stock_symbol: 'Optional[Union[str, List[str]]]' = None, start_date: 'str' = None, end_date: 'str' = None, fields: 'Optional[Union[str, List[str]]]' = None, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "index_symbol",
+        "stock_symbol",
+        "start_date",
+        "end_date",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [
+        "end_date",
+        "start_date"
+      ],
+      "upstream_warning": false
+    },
+    "get_industry_constituents": {
+      "signature": "(industry_code: 'Optional[Union[str, List[str]]]' = None, stock_symbol: 'Optional[Union[str, List[str]]]' = None, level: 'Optional[str]' = None, fields: 'Optional[Union[str, List[str]]]' = None, reference: 'Optional[str]' = 'sws_2021', date: 'Optional[str]' = None) -> 'pd.DataFrame'",
+      "parameters": [
+        "industry_code",
+        "stock_symbol",
+        "level",
+        "fields",
+        "reference",
+        "date"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    },
+    "get_last_trade_date": {
+      "signature": "(exchange: 'Optional[str]' = 'SH') -> 'Optional[str]'",
+      "parameters": [
+        "exchange"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    },
+    "get_lhb_list": {
+      "signature": "(start_date: 'str' = '', end_date: 'str' = '', symbol: 'Optional[Union[str, List[str]]]' = None, type: 'Optional[Union[str, List[str]]]' = None, fields: 'Optional[Union[str, List[str]]]' = None, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "start_date",
+        "end_date",
+        "symbol",
+        "type",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [
+        "end_date",
+        "start_date"
+      ],
+      "upstream_warning": false
+    },
+    "get_macro_ci": {
+      "signature": "(symbol: 'Optional[Union[str, List[str]]]' = None, start_date: 'Optional[str]' = None, end_date: 'Optional[str]' = None, fields: 'Optional[Union[str, List[str]]]' = None, **kw) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    },
+    "get_macro_mb": {
+      "signature": "(symbol: 'Optional[Union[str, List[str]]]' = None, start_date: 'Optional[str]' = None, end_date: 'Optional[str]' = None, fields: 'Optional[Union[str, List[str]]]' = None, **kw) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    },
+    "get_macro_na": {
+      "signature": "(symbol: 'Optional[Union[str, List[str]]]' = None, start_date: 'Optional[str]' = None, end_date: 'Optional[str]' = None, fields: 'Optional[Union[str, List[str]]]' = None, **kw) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    },
+    "get_macro_pi": {
+      "signature": "(symbol: 'Optional[Union[str, List[str]]]' = None, start_date: 'Optional[str]' = None, end_date: 'Optional[str]' = None, fields: 'Optional[Union[str, List[str]]]' = None, **kw) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    },
+    "get_prev_trade_date": {
+      "signature": "(date: 'str' = '', exchange: 'Optional[str]' = 'SH', n: 'Optional[int]' = 1) -> 'str'",
+      "parameters": [
+        "date",
+        "exchange",
+        "n"
+      ],
+      "required": [],
+      "runtime_required": [
+        "date"
+      ],
+      "upstream_warning": false
+    },
+    "get_share_float": {
+      "signature": "(symbol: 'Optional[Union[str, List[str]]]' = None, start_date: 'str' = None, end_date: 'str' = None, fields: 'Optional[Union[str, List[str]]]' = None, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [
+        "end_date",
+        "start_date"
+      ],
+      "upstream_warning": false
+    },
+    "get_stock_daily_post": {
+      "signature": "(symbol: 'Optional[Union[str, List[str]]]' = '', start_date: 'str' = '', end_date: 'str' = '', fields: 'Optional[Union[str, List[str]]]' = None, indicator: 'Optional[str]' = '', st: 'Optional[bool]' = True, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "fields",
+        "indicator",
+        "st"
+      ],
+      "required": [],
+      "runtime_required": [
+        "end_date",
+        "start_date"
+      ],
+      "upstream_warning": false
+    },
+    "get_stock_industry": {
+      "signature": "(stock_symbol: 'Optional[Union[str, List[str]]]' = '', level: 'Optional[str]' = 'L1', reference: 'Optional[str]' = 'sws_2021', date: 'Optional[str]' = None) -> 'pd.DataFrame'",
+      "parameters": [
+        "stock_symbol",
+        "level",
+        "reference",
+        "date"
+      ],
+      "required": [],
+      "runtime_required": [
+        "stock_symbol"
+      ],
+      "upstream_warning": false
+    },
+    "get_stock_status_change": {
+      "signature": "(symbol: 'Optional[Union[str, List[str]]]' = None, start_date: 'Optional[str]' = None, end_date: 'Optional[str]' = None, fields: 'Optional[Union[str, List[str]]]' = None, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    },
+    "get_top_holders": {
+      "signature": "(symbol: 'Optional[Union[str, List[str]]]' = None, start_date: 'str' = None, end_date: 'str' = None, start_rank: 'Optional[int]' = None, end_rank: 'Optional[int]' = None, stock_type: 'Optional[str]' = None, market: 'Optional[str]' = 'cn', fields: 'Optional[Union[str, List[str]]]' = None, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "symbol",
+        "start_date",
+        "end_date",
+        "start_rank",
+        "end_rank",
+        "stock_type",
+        "market",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [
+        "end_date",
+        "start_date"
+      ],
+      "upstream_warning": false
+    },
+    "get_trade_cal": {
+      "signature": "(start_date: 'Optional[str]' = None, end_date: 'Optional[str]' = None, exchange: 'Optional[str]' = 'SH', is_trading_day: 'Optional[int]' = None, fields: 'Optional[Union[str, List[str]]]' = None, **kwargs) -> 'pd.DataFrame'",
+      "parameters": [
+        "start_date",
+        "end_date",
+        "exchange",
+        "is_trading_day",
+        "fields"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    },
+    "init_token": {
+      "signature": "(username: 'Optional[str]' = '', password: 'Optional[str]' = '', base_url: 'Optional[str]' = 'https://pandadata.pandaaiquant.com', country: 'Optional[str]' = 'CN') -> 'str'",
+      "parameters": [
+        "username",
+        "password",
+        "base_url",
+        "country"
+      ],
+      "required": [],
+      "runtime_required": [],
+      "upstream_warning": false
+    }
+  }
+}
